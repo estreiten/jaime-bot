@@ -1,0 +1,15 @@
+{
+  "name": "jaime-bot",
+  "version": "1.0.0",
+  "description": "A handy friend of Jaime Manager that builds environments and run scripts remotelly",
+  "main": "server.js",
+  "author": "Ezequiel Streitenberger <ezequiel@estreiten.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/estreiten/jaime-bot.git"
+  },
+  "homepage": "https://github.com/estreiten/jaime-bot",
+  "dependencies": {
+    "express": "^4.18.1"
+  }
+}
