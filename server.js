@@ -1,5 +1,6 @@
 const config = require('./config');
 const envManager = require('./env.js');
+const actionManager = require('./action.js');
 
 const express = require('express');
 const app = express();
@@ -15,7 +16,10 @@ const authorized = (req) => {
 app.get('/', async (req, res) => {
   try {
     if (authorized(req)) {
-      res.send(envManager.getEnvironments()).status(200)
+      res.send({
+        env: envManager.getEnvironments(),
+        actions: actionManager.getActions()
+      }).status(200)
     } else {
       res.sendStatus(403)
     }
@@ -52,6 +56,24 @@ app.get('/log', async (req, res) => {
     if (authorized(req)) {
       if (!!req.query.env && !!req.query.date) {
         res.sendFile(envManager.getLogPath(req.query.env, req.query.date), {root: '.'})
+      } else {
+        res.sendStatus(400)
+      }
+    } else {
+      res.sendStatus(403)
+    }
+  } catch (err) {
+    console.error(err.message)
+    res.sendStatus(500)
+  }
+})
+
+app.post('/action', async (req, res) => {
+  try {
+    console.log('action trigger received for', req.body.name)
+    if (authorized(req)) {
+      if (!!req.body.name && config.actions.some(action => action.name === req.body.name)) {
+        res.sendStatus(actionManager.execute(req.body.name) === 0 ? 200 : 500)
       } else {
         res.sendStatus(400)
       }
