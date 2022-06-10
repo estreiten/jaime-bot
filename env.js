@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { spawnSync } = require("child_process");
+const { spawn } = require("child_process");
 const util = require('./utils.js');
 const environments = require('./config').env;
 
@@ -16,27 +16,43 @@ const getEnvByName = (name) => {
   return false
 }
 
-const runScript = (step, {env, branch, logFile}) => {
+const runScript = (step, {env, branch, logName}, next) => {
   const name = step === 'post' ? 'post-build' : step
   const scriptFile = step === 'update' ? `${__dirname}/update.sh` : `${__dirname}/env/${env.name}/${step}.sh`
+  const logFile = `${logName}.log`
   const params = branch ? [branch, logFile] : [logFile]
   if (fs.existsSync(scriptFile)) {
     log(logFile, `===== ${env.name} environment ${name} started =====`)
-    const process = spawnSync(scriptFile, params, {cwd: env.path})
-    if (process.stdout && process.stdout.length > 0) {
-      log(logFile, `${process.stdout}`)
-    }
-    if (process.stderr && process.stderr.length > 0) {
-      log(logFile, `== Stderr == \r\n${process.stderr}`)
-    }
-    if (process.error) {
-      log(logFile, `error ${process.error.name}: ${process.error.message}`)
-    }
-    log(logFile, `The ${env.name} environment ${name} process ${process.status === 0 ? 'succeded' : 'failed'}`)
-    return process.status
+    const process = spawn(scriptFile, params, {cwd: env.path})
+    process.stdout.on('data', data => {
+      log(logFile, data)
+    })
+    process.stderr.on('data', data => {
+      log(logFile, `== Stderr == \r\n${data}`)
+    })
+    process.on('close', code => {
+      log(logFile, `The ${env.name} environment ${name} process ${code === 0 ? 'succeded' : 'failed'}`)
+      if (code === 0) {
+        if (next && next.length > 0) {
+          runScript(next.shift(), {env, branch, logFile}, next)
+        } else {
+          log(logFile, `===== The ${env.name} environment has been updated =====`)
+        }
+      } else {
+        log(logFile, `===== The ${env.name} environment update failed =====`)
+      }
+      fs.renameSync(logFile, `${logName}-${code === null ? 1 : code}.log`)
+      if (branch) {
+        console.log(`${branch} branch processing finished`)
+      }
+    })
+    process.on('error', err => {
+      log(logFile, `error ${err.name}: ${err.message}`)
+      fs.renameSync(logFile, `${logName}-1.log`)
+    })
   } else {
     log(logFile, `No ${env.name} environment ${name} script was found`)
-    return 0
+    fs.renameSync(logFile, `${logName}-0.log`)
   }
 }
 
@@ -48,27 +64,25 @@ const log = (file, txt) => {
   });
 }
 
-const update = (env, branch) => {
+const update = (env, branch, tries = 3) => {
   if (env) {
-    const logName = `${__dirname}/env/${env.name}/logs/${(new Date()).getTime()}`
-    const logFile = `${logName}.log`
-    let status = runScript('update', {env, branch, logFile})
-    if (status === 0) {
-      status = runScript('build', {env, branch, logFile})
-    }
-    if (status === 0) {
-      status = runScript('post', {env, branch, logFile})
-    }
-    if (status === 0) {
-      log(logFile, `===== The ${env.name} environment has been updated =====`)
+    const path = `${__dirname}/env/${env.name}`
+    const lock = `${path}/.lock`
+    if (fs.existsSync(lock)) {
+      if (tries > 0) {
+        setTimeout(() => {
+          update(env, branch, --tries)
+        }, 1000 * 60 * 10)
+      } else {
+        console.error(`Run aborted. The ${env.name} environment has been running a previous script for more than 30 minutes`)
+      }
     } else {
-      log(logFile, `===== The ${env.name} environment update failed =====`)
+      fs.closeSync(fs.openSync(lock, 'w'))
+      const logName = `${__dirname}/env/${env.name}/logs/${(new Date()).getTime()}`
+      runScript('update', {env, branch, logName}, ['build','post'])
     }
-    fs.renameSync(logFile, `${logName}-${status === null ? 1 : status}.log`)
-    return status
   } else {
     console.log(`No environment is connected to the ${branch} branch`)
-    return 1
   }
 }
 
@@ -91,11 +105,11 @@ const getEnvLogs = (envName) => {
 module.exports = {
   updateByEnvName: (envName) => {
     const env = getEnvByName(envName)
-    return update(env)
+    update(env)
   },
   updateByBranch: (envName, branch) => {
     const env = getEnvByName(envName)
-    return update(env, branch)
+    update(env, branch)
   },
   getEnvironments: () => {
     let envs = []

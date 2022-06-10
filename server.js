@@ -35,10 +35,11 @@ app.post('/update', async (req, res) => {
     if (authorized(req)) {
       if (!!req.body.env && Object.keys(config.env).indexOf(req.body.env) > -1) {
         if (!!req.body.branch) {
-          res.sendStatus(envManager.updateByBranch(req.body.env, req.body.branch) === 0 ? 200 : 500)
+          envManager.updateByBranch(req.body.env, req.body.branch)
         } else {
-          res.sendStatus(envManager.updateByEnvName(req.body.env) === 0 ? 200 : 500)
+          envManager.updateByEnvName(req.body.env)
         }
+        res.sendStatus(200)
       } else {
         res.sendStatus(400)
       }
