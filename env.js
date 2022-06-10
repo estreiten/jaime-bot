@@ -37,15 +37,17 @@ const runScript = (step, {env, branch, logName, lock}, next) => {
           runScript(next.shift(), {env, branch, logName, lock}, next)
         } else {
           log(logFile, `===== The ${env.name} environment has been updated =====`)
+          fs.renameSync(logFile, `${logName}-${code === null ? 1 : code}.log`)
+          if (branch) {
+            console.log(`${branch} branch processing finished`)
+          }
+          fs.unlinkSync(lock)
         }
       } else {
         log(logFile, `===== The ${env.name} environment update failed =====`)
+        fs.renameSync(logFile, `${logName}-${code === null ? 1 : code}.log`)
+        fs.unlinkSync(lock)
       }
-      fs.renameSync(logFile, `${logName}-${code === null ? 1 : code}.log`)
-      if (branch) {
-        console.log(`${branch} branch processing finished`)
-      }
-      fs.unlinkSync(lock)
     })
     process.on('error', err => {
       log(logFile, `error ${err.name}: ${err.message}`)
