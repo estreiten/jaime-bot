@@ -16,7 +16,7 @@ const getEnvByName = (name) => {
   return false
 }
 
-const runScript = (step, {env, branch, logName}, next) => {
+const runScript = (step, {env, branch, logName, lock}, next) => {
   const name = step === 'post' ? 'post-build' : step
   const scriptFile = step === 'update' ? `${__dirname}/update.sh` : `${__dirname}/env/${env.name}/${step}.sh`
   const logFile = `${logName}.log`
@@ -34,7 +34,7 @@ const runScript = (step, {env, branch, logName}, next) => {
       log(logFile, `The ${env.name} environment ${name} process ${code === 0 ? 'succeded' : 'failed'}`)
       if (code === 0) {
         if (next && next.length > 0) {
-          runScript(next.shift(), {env, branch, logFile}, next)
+          runScript(next.shift(), {env, branch, logFile, lock}, next)
         } else {
           log(logFile, `===== The ${env.name} environment has been updated =====`)
         }
@@ -45,14 +45,17 @@ const runScript = (step, {env, branch, logName}, next) => {
       if (branch) {
         console.log(`${branch} branch processing finished`)
       }
+      fs.unlinkSync(lock)
     })
     process.on('error', err => {
       log(logFile, `error ${err.name}: ${err.message}`)
       fs.renameSync(logFile, `${logName}-1.log`)
+      fs.unlinkSync(lock)
     })
   } else {
     log(logFile, `No ${env.name} environment ${name} script was found`)
     fs.renameSync(logFile, `${logName}-0.log`)
+    fs.unlinkSync(lock)
   }
 }
 
