@@ -56,13 +56,14 @@ When triggered manually, the scripts will receive one parameter:
 ### Custom actions
 To specify custom actions in the app, you have to create a special folder at the root of the project called ``actions``.<br>
 The actions are buttons in the Jaime Manager board, with the action name inside them, that will trigger a specific script file.<br>
+From that new ``actions`` folder, you have to create a folder with the action ``key``. Inside that folder, as same as with the environments, a ``logs`` folder and the script to be run under the ``run.sh`` name.<br>
 For example, in the `config.js` file:
 
     actions: [
       {
         name: 'Play music',
-        script: 'play.sh'
+        key: 'play'
       }
     ]
 
-  when clicking the "Play music" button in the Jaime Manager board, it will trigger the ``play.sh`` script located inside the ``actions`` folder in the root of the project.
+  when clicking the "Play music" button in the Jaime Manager board, it will trigger the ``run.sh`` script located inside the ``actions/play`` folder. The output will be displayed in a new file inside the ``logs`` folder.

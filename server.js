@@ -71,10 +71,10 @@ app.get('/log', async (req, res) => {
 
 app.post('/action', async (req, res) => {
   try {
-    console.log('action trigger received for', req.body.name)
+    console.log('action trigger received for', req.body.key)
     if (authorized(req)) {
-      if (!!req.body.name && config.actions.some(action => action.name === req.body.name)) {
-        res.sendStatus(actionManager.execute(req.body.name) === 0 ? 200 : 500)
+      if (!!req.body.name && config.actions.some(action => action.key === req.body.key)) {
+        res.sendStatus(actionManager.execute(req.body.key) === 0 ? 200 : 500)
       } else {
         res.sendStatus(400)
       }
