@@ -74,7 +74,8 @@ app.post('/action', async (req, res) => {
     console.log('action trigger received for', req.body.key)
     if (authorized(req)) {
       if (!!req.body.name && config.actions.some(action => action.key === req.body.key)) {
-        res.sendStatus(actionManager.execute(req.body.key) === 0 ? 200 : 500)
+        actionManager.execute(req.body.key)
+        res.sendStatus(200)
       } else {
         res.sendStatus(400)
       }
