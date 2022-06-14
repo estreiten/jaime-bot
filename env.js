@@ -1,4 +1,5 @@
 const fs = require('fs');
+const os = require('os');
 const { spawn } = require("child_process");
 const util = require('./utils.js');
 const environments = require('./config').env;
@@ -23,7 +24,12 @@ const runScript = (step, {env, branch, logName, lock}, next) => {
   const params = branch ? [branch, logFile] : [logFile]
   if (fs.existsSync(scriptFile)) {
     log(logFile, `===== ${env.name} environment ${name} started =====`)
-    const process = spawn(scriptFile, params, {cwd: env.path})
+    const isWin = os.platform() === "win32"
+    const spawnParams = isWin ? { shell: true } : {}
+    if (env.path) {
+      spawnParams.cwd = env.path
+    }
+    const process = spawn(scriptFile, params, spawnParams)
     process.stdout.on('data', data => {
       log(logFile, data)
     })
@@ -84,7 +90,7 @@ const update = (env, branch, tries = 3) => {
     } else {
       fs.closeSync(fs.openSync(lock, 'w'))
       const logName = `${__dirname}/env/${env.name}/logs/${(new Date()).getTime()}`
-      runScript('update', {env, branch, logName}, ['build','post'])
+      runScript('update', {env, branch, logName, lock}, ['build','post'])
     }
   } else {
     console.log(`No environment is connected to the ${branch} branch`)

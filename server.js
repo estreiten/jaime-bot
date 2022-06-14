@@ -55,8 +55,10 @@ app.post('/update', async (req, res) => {
 app.get('/log', async (req, res) => {
   try {
     if (authorized(req)) {
-      if (!!req.query.env && !!req.query.date) {
-        res.sendFile(envManager.getLogPath(req.query.env, req.query.date), {root: '.'})
+      if ((!!req.query.env || !!req.query.action) && !!req.query.date) {
+        const manager = !!req.query.env ? envManager : actionManager
+          const key = !!req.query.env ? req.query.env : req.query.action
+          res.sendFile(manager.getLogPath(key, req.query.date), {root: '.'})
       } else {
         res.sendStatus(400)
       }
@@ -69,11 +71,11 @@ app.get('/log', async (req, res) => {
   }
 })
 
-app.post('/action', async (req, res) => {
+app.post('/action', (req, res) => {
   try {
     console.log('action trigger received for', req.body.key)
     if (authorized(req)) {
-      if (!!req.body.name && config.actions.some(action => action.key === req.body.key)) {
+      if (!!req.body.key && config.actions.some(action => action.key === req.body.key)) {
         actionManager.execute(req.body.key)
         res.sendStatus(200)
       } else {
