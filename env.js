@@ -68,7 +68,7 @@ const runScript = (step, {env, branch, logName, lock}, next) => {
 }
 
 const log = (file, txt) => {
-  let line = `${util.formatDate(new Date())}  `
+  let line = `${new Date().toUTCString()}  `
   line += txt ? txt + '\n' : '\n'
   fs.writeFileSync(file, line, {
     flag: 'a+'

@@ -5,7 +5,7 @@ const actions = require('./config').actions;
 const util = require('./utils.js');
 
 const log = (file, txt) => {
-  let line = `${util.formatDate(new Date())}  `
+  let line = `${new Date().toUTCString()}  `
   line += txt ? txt + '\n' : '\n'
   fs.writeFileSync(file, line, {
     flag: 'a+'
