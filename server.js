@@ -76,7 +76,11 @@ app.post('/action', (req, res) => {
     console.log('action trigger received for', req.body.key)
     if (authorized(req)) {
       if (!!req.body.key && config.actions.some(action => action.key === req.body.key)) {
-        actionManager.execute(req.body.key)
+        if (req.body.retries !== undefined) {
+          actionManager.execute(req.body.key, req.body.retries)
+        } else {
+          actionManager.execute(req.body.key)
+        }
         res.sendStatus(200)
       } else {
         res.sendStatus(400)

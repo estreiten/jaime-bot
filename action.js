@@ -32,9 +32,13 @@ const runScript = (action, path) => {
       log(logFile, `== Stderr == \r\n${data}`)
     })
     process.on('close', code => {
-      log(logFile, `==== The "${action.name}" action script ${code === 0 ? 'succeded' : 'failed'} ====`)
+      log(logFile, `==== The "${action.name}" action script ${code === 0 ? 'succeded' : code === 10 ? 'succeded, re-run requested' : 'failed'} ====`)
       fs.renameSync(logFile, `${logName}-${code === null ? 1 : code}.log`)
-      fs.unlinkSync(lock)
+      if (code === 10) {
+        runScript(action, path)
+      } else {
+        fs.unlinkSync(lock)
+      }
     })
     process.on('error', err => {
       log(logFile, `error ${err.name}: ${err.message}`)
