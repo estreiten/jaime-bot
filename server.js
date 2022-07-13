@@ -90,6 +90,43 @@ app.post('/action', (req, res) => {
   }
 })
 
+app.post('/toggle', (req, res) => {
+  try {
+    console.log('toggle action received for', req.body.key)
+    if (authorized(req)) {
+      if (!!req.body.key && config.actions.some(action => action.key === req.body.key && !!action.cron)) {
+        actionManager.toggle(req.body.key)
+        res.sendStatus(200)
+      } else {
+        res.sendStatus(400)
+      }
+    } else {
+      res.sendStatus(403)
+    }
+  } catch (err) {
+    console.error(err.message)
+    res.sendStatus(500)
+  }
+})
+
+app.get('/paused', (req, res) => {
+  try {
+    console.log('action paused query received for', req.body.key)
+    if (authorized(req)) {
+      if (!!req.body.key && config.actions.some(action => action.key === req.body.key && !!action.cron)) {
+        res.send(actionManager.isPaused(req.body.key))
+      } else {
+        res.sendStatus(400)
+      }
+    } else {
+      res.sendStatus(403)
+    }
+  } catch (err) {
+    console.error(err.message)
+    res.sendStatus(500)
+  }
+})
+
 const port = config.port || 80
 app.listen(port, () => {
   console.log(`Jaime bot listening on ${port}`)

@@ -70,6 +70,33 @@ const execute = (actionKey, tries = 3) => {
   }
 }
 
+const toggle = (actionKey) => {
+  const action = actions.find(action => action.key === actionKey)
+  if (action) {
+    const path = `${__dirname}/actions/${action.key}`
+    const pause = `${path}/.pause`
+    if (fs.existsSync(pause)) {
+      fs.unlinkSync(pause)
+    } else {
+      fs.closeSync(fs.openSync(pause, 'w'))
+    }
+  } else {
+    console.log(`No action found with the key "${actionKey}"`)
+  }
+}
+
+const isPaused = (actionKey) => {
+  const action = actions.find(action => action.key === actionKey)
+  if (action && !!action.cron) {
+    const path = `${__dirname}/actions/${action.key}`
+    const pause = `${path}/.pause`
+    return fs.existsSync(pause)
+  } else {
+    console.log(`No cron action found with the key "${actionKey}"`)
+    return false
+  }
+}
+
 const getLogs = (actionKey) => {
   let logs = []
   const logsPath = `${__dirname}/actions/${actionKey}/logs`
@@ -90,14 +117,19 @@ module.exports = {
   getActions: () => {
     return actions ? actions.map(action => {
       action.logs = getLogs(action.key)
+      if (!!action.cron) {
+        action.isPaused = isPaused(action.key)
+      }
       return action
     }) : []
   },
   execute,
+  toggle,
   getLogPath: (actionKey, date) => {
     const logsPath = `${__dirname}/actions/${actionKey}/logs`
     const logFiles = fs.readdirSync(logsPath)
     const logFile = logFiles.find(logFile => logFile.startsWith(date))
     return `actions/${actionKey}/logs/${logFile}`
-  }
+  },
+  isPaused
 }
