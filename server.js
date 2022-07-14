@@ -16,10 +16,14 @@ const authorized = (req) => {
 app.get('/', async (req, res) => {
   try {
     if (authorized(req)) {
-      res.send({
+      let info = {
         env: envManager.getEnvironments(),
         actions: actionManager.getActions()
-      }).status(200)
+      }
+      if (!!config.name) {
+        info.name = config.name
+      }
+      res.send(info).status(200)
     } else {
       res.sendStatus(403)
     }
