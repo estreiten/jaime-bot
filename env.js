@@ -139,5 +139,10 @@ module.exports = {
     const logFiles = fs.readdirSync(logsPath)
     const logFile = logFiles.find(logFile => logFile.startsWith(date))
     return `env/${env}/logs/${logFile}`
+  },
+  getLogList: (env) => {
+    const logsPath = `${__dirname}/env/${env}/logs`
+    const logFiles = fs.readdirSync(logsPath)
+    return logFiles.map(logFile => logFile.substring(0, logFile.length - 4)) //remove file extension
   }
 }

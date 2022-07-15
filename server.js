@@ -75,6 +75,26 @@ app.get('/log', async (req, res) => {
   }
 })
 
+app.get('/logs', async (req, res) => {
+  try {
+    if (authorized(req)) {
+      if (!!req.query.env || !!req.query.action) {
+        const manager = !!req.query.env ? envManager : actionManager
+        const key = !!req.query.env ? req.query.env : req.query.action
+        const list = manager.getLogList(key)
+        res.send(list)
+      } else {
+        res.sendStatus(400)
+      }
+    } else {
+      res.sendStatus(403)
+    }
+  } catch (err) {
+    console.error(err.message)
+    res.sendStatus(500)
+  }
+})
+
 app.post('/action', (req, res) => {
   try {
     console.log('action trigger received for', req.body.key)
