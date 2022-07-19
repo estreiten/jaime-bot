@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require("child_process");
 const util = require('./utils.js');
+const notifierService = require('./notifier');
 const environments = require('./config').env;
 
 const getEnvByName = (name) => {
@@ -43,27 +44,39 @@ const runScript = (step, {env, branch, logName, lock}, next) => {
           runScript(next.shift(), {env, branch, logName, lock}, next)
         } else {
           log(logFile, `===== The ${env.name} environment has been updated =====`)
-          fs.renameSync(logFile, `${logName}-${code === null ? 1 : code}.log`)
+          const newLog = `${logName}-${code === null ? 1 : code}.log`
+          fs.renameSync(logFile, newLog)
           if (branch) {
             console.log(`${branch} branch processing finished`)
           }
           fs.unlinkSync(lock)
+          notifierService.notifyEnv('ok', env, branch, newLog)
         }
       } else {
         log(logFile, `===== The ${env.name} environment update failed =====`)
-        fs.renameSync(logFile, `${logName}-${code === null ? 1 : code}.log`)
+        const newLog = `${logName}-${code === null ? 1 : code}.log`
+        fs.renameSync(logFile, newLog)
         fs.unlinkSync(lock)
+        notifierService.notifyEnv('fail', env, branch, newLog)
       }
     })
     process.on('error', err => {
       log(logFile, `error ${err.name}: ${err.message}`)
-      fs.renameSync(logFile, `${logName}-1.log`)
+      const newLog = `${logName}-1.log`
+      fs.renameSync(logFile, newLog)
       fs.unlinkSync(lock)
+      notifierService.notifyEnv('fail', env, branch, newLog)
     })
   } else {
     log(logFile, `No ${env.name} environment ${name} script was found`)
-    fs.renameSync(logFile, `${logName}-0.log`)
+    log(logFile, `===== The ${env.name} environment has been updated =====`)
+    const newLog = `${logName}-0.log`
+    fs.renameSync(logFile, newLog)
+    if (branch) {
+      console.log(`${branch} branch processing finished`)
+    }
     fs.unlinkSync(lock)
+    notifierService.notifyEnv('ok', env, branch, newLog)
   }
 }
 

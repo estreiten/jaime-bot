@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require("child_process");
 const actions = require('./config').actions;
+const notifierService = require('./notifier');
 const util = require('./utils.js');
 
 const log = (file, txt) => {
@@ -33,17 +34,21 @@ const runScript = (action, path) => {
     })
     process.on('close', code => {
       log(logFile, `==== The "${action.name}" action script ${code === 0 ? 'succeded' : code === 10 ? 'succeded, re-run requested' : 'failed'} ====`)
-      fs.renameSync(logFile, `${logName}-${code === null ? 1 : code}.log`)
+      const newLog = `${logName}-${code === null ? 1 : code}.log`
+      fs.renameSync(logFile, newLog)
       if (code === 10) {
         runScript(action, path)
       } else {
         fs.unlinkSync(lock)
+        notifierService.notifyAction('ok', action, newLog)
       }
     })
     process.on('error', err => {
       log(logFile, `error ${err.name}: ${err.message}`)
-      fs.renameSync(logFile, `${logName}-1.log`)
+      const newLog = `${logName}-1.log`
+      fs.renameSync(logFile, newLog)
       fs.unlinkSync(lock)
+      notifierService.notifyAction('fail', action, newLog)
     })
   } else {
     log(logFile, `No ${action.name} script was found`)
