@@ -28,7 +28,7 @@ const notify = async (subjects, status, data, logFile) => {
         html += `previous runs in the <a href="http://${jaimeUrl}" target="_blank">Jaime Board</a>.`
 
         await mailService.send({
-          to: destination.mail,
+          to: `"Jaime Board" <${destination.mail}>`,
           subject,
           html
         }).then(() => {
