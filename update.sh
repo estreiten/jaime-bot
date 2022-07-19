@@ -4,4 +4,5 @@ git checkout -- .
 if [ -n "$1" ]; then
   git checkout $1
 fi
+git log --format=%B @{u}...HEAD
 git pull
