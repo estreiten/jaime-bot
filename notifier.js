@@ -50,8 +50,8 @@ module.exports = {
   notifyEnv: (status, env, branch, logFile) => {
     if (env.notify) {
       notify({
-        ok: `New "${branch || env.branch || env.branchStart}" updates deployed to "${env.name}" environment`,
-        fail: `New "${branch || env.branch || env.branchStart}" updates failed to deploy at "${env.name}" environment`
+        ok: `New${branch ? ' "' + branch + '"' : ''} updates deployed to "${env.name.toUpperCase()}" environment`,
+        fail: `New${branch ? ' "' + branch + '"' : ''} updates failed to deploy at "${env.name.toUpperCase()}" environment`
       }, status, env, logFile)
     }
   },
