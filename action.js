@@ -13,7 +13,25 @@ const log = (file, txt) => {
   });
 }
 
-const runScript = (action, path) => {
+const afterScript = (code, logFile, logName, action, path, lock) => {
+  const result = code === 0 ? 'succeded' : code === 10 ? 'succeded, re-run requested' : code === 3 ? 'succeded with warnings' : 'failed'
+  log(logFile, `==== The "${action.name}" action script ${result} ====`)
+  const newLog = `${logName}-${code === null ? 1 : code}.log`
+  fs.renameSync(logFile, newLog)
+  if (code === 10) {
+    runScript(action, path)
+  } else {
+    fs.unlinkSync(lock)
+    notifierService.notifyAction(code === 0 ? 'ok' : code === 3 ? 'warn' : 'fail', action, newLog)
+  }
+}
+
+const errorHandler = (err, logFile) => {
+  console.error(err)
+  log(logFile, `== Error == \r\n${err.name}: ${err.message}`)
+}
+
+const runScript = async (action, path) => {
   const lock = `${path}/.lock`
   const scriptFile = `${path}/run.sh`
   const logName = `${path}/logs/${(new Date()).getTime()}`
@@ -22,6 +40,7 @@ const runScript = (action, path) => {
     log(logFile, `The "${action.name}" action script is starting`)
     const isWin = os.platform() === "win32"
     const spawnParams = isWin ? { shell: true } : {}
+    let hasWarning = false
     if (action.root) {
       spawnParams.cwd = action.root
     }
@@ -30,30 +49,50 @@ const runScript = (action, path) => {
       log(logFile, data)
     })
     process.stderr.on('data', data => {
-      log(logFile, `== Stderr == \r\n${data}`)
-    })
-    process.on('close', code => {
-      log(logFile, `==== The "${action.name}" action script ${code === 0 ? 'succeded' : code === 10 ? 'succeded, re-run requested' : 'failed'} ====`)
-      const newLog = `${logName}-${code === null ? 1 : code}.log`
-      fs.renameSync(logFile, newLog)
-      if (code === 10) {
-        runScript(action, path)
-      } else {
-        fs.unlinkSync(lock)
-        notifierService.notifyAction('ok', action, newLog)
+      const errorRx = /error|fatal|failed|exception|critical/i
+      const warnRx = /warning|deprecated|caution|notice/i
+      let title = 'Stderr output'
+      if (errorRx.test(data)) {
+        title = 'Error'
+        process.exitCode = 1
+      } else if (warnRx.test(data)) {
+        title = 'Warning'
+        hasWarning = true
+      }
+      log(logFile, `== ${title} == \r\n${data}`)
+      if (process.exitCode === 1) {
+        process.kill()
       }
     })
+    process.on('uncaughtException', (err) => {
+      errorHandler(err, logFile, logName, lock, action)
+      process.exitCode = 1
+      process.kill()
+    })
+    process.on('unhandledRejection', (reason, promise) => {
+      errorHandler(err, logFile, logName, lock, action)
+      process.exitCode = 1
+      process.kill()
+    })
+    process.on('close', code => {
+      afterScript(hasWarning ? 3 : code, logFile, logName, action, path, lock)
+    })
     process.on('error', err => {
-      log(logFile, `error ${err.name}: ${err.message}`)
-      const newLog = `${logName}-1.log`
-      fs.renameSync(logFile, newLog)
-      fs.unlinkSync(lock)
-      notifierService.notifyAction('fail', action, newLog)
+      errorHandler(err, logFile, logName, lock, action)
+      process.exitCode = 1
+      process.kill()
     })
   } else {
-    log(logFile, `No ${action.name} script was found`)
-    fs.renameSync(logFile, `${logName}-0.log`)
-    fs.unlinkSync(lock)
+    const nodeFile = `${path}/run.js`
+    if (fs.existsSync(nodeFile)) {
+      const run = require(nodeFile)
+      const code = await run(log, logFile, [])
+      afterScript(code, logFile, logName, action, path, lock)
+    } else {
+      log(logFile, `No ${action.name} script was found`)
+      fs.renameSync(logFile, `${logName}-0.log`)
+      fs.unlinkSync(lock)
+    }
   }
 }
 

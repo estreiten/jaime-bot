@@ -15,8 +15,9 @@ const notify = async (subjects, status, data, logFile) => {
       const destination = destinations[index];
       if (!destination.on ||
         (destination.on === 'success' && status === 'ok') ||
+        (destination.on === 'warning' && status === 'warn') ||
         (destination.on === 'failure' && status === 'fail')) {
-        const subject = status === 'ok' ? subjects.ok : subjects.fail
+        const subject = status === 'ok' ? subjects.ok : status === 'warn' ? subjects.warn : subjects.fail
         const jaimeUrl = config.jaimeUrl
         let html = ''
         if (destination.level === 'log') {
@@ -63,6 +64,7 @@ module.exports = {
     if (action.notify) {
       notify({
         ok: `The "${action.name}" action run${!!config.name ? ' at "' + config.name + '"' : ''} was completed successfully`,
+        warn: `The "${action.name}" action run${!!config.name ? ' at "' + config.name + '"' : ''} was completed with warnings`,
         fail: `The "${action.name}" action run${!!config.name ? ' at "' + config.name + '"' : ''} failed`
       }, status, action, logFile)
     }
