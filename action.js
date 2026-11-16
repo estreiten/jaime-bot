@@ -1,6 +1,6 @@
 const fs = require('fs');
 const os = require('os');
-const { spawn } = require("child_process");
+const { spawnScript, killScript } = require('./runner');
 const actions = require('./config').actions;
 const notifierService = require('./notifier');
 const util = require('./utils.js');
@@ -38,49 +38,34 @@ const runScript = async (action, path) => {
   const logFile = `${logName}.log`
   if (fs.existsSync(scriptFile)) {
     log(logFile, `The "${action.name}" action script is starting`)
-    const isWin = os.platform() === "win32"
-    const spawnParams = isWin ? { shell: true } : {}
     let hasWarning = false
-    if (action.root) {
-      spawnParams.cwd = action.root
-    }
-    const process = spawn(scriptFile, spawnParams)
-    process.stdout.on('data', data => {
+    const child = spawnScript(scriptFile, [], action.root)
+    child.stdout.on('data', data => {
       log(logFile, data)
     })
-    process.stderr.on('data', data => {
+    child.stderr.on('data', data => {
       const errorRx = /error|fatal|failed|exception|critical/i
       const warnRx = /warning|deprecated|caution|notice/i
       let title = 'Stderr output'
       if (errorRx.test(data)) {
         title = 'Error'
-        process.exitCode = 1
+        child.exitCode = 1
       } else if (warnRx.test(data)) {
         title = 'Warning'
         hasWarning = true
       }
       log(logFile, `== ${title} == \r\n${data}`)
-      if (process.exitCode === 1) {
-        process.kill()
+      if (child.exitCode === 1) {
+        killScript(child)
       }
     })
-    process.on('uncaughtException', (err) => {
-      errorHandler(err, logFile, logName, lock, action)
-      process.exitCode = 1
-      process.kill()
-    })
-    process.on('unhandledRejection', (reason, promise) => {
-      errorHandler(err, logFile, logName, lock, action)
-      process.exitCode = 1
-      process.kill()
-    })
-    process.on('close', code => {
+    child.on('close', code => {
       afterScript(hasWarning ? 3 : code, logFile, logName, action, path, lock)
     })
-    process.on('error', err => {
+    child.on('error', err => {
       errorHandler(err, logFile, logName, lock, action)
-      process.exitCode = 1
-      process.kill()
+      child.exitCode = 1
+      killScript(child)
     })
   } else {
     const nodeFile = `${path}/run.js`

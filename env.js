@@ -1,6 +1,6 @@
 const fs = require('fs');
 const os = require('os');
-const { spawn } = require("child_process");
+const { spawnScript } = require('./runner');
 const util = require('./utils.js');
 const notifierService = require('./notifier');
 const environments = require('./config').env;
@@ -41,19 +41,14 @@ const runScript = (step, {env, branch, logName, lock}, next) => {
   const params = branch ? [branch, logFile] : [logFile]
   if (fs.existsSync(scriptFile)) {
     log(logFile, `===== ${env.name} environment ${name} started =====`)
-    const isWin = os.platform() === "win32"
-    const spawnParams = isWin ? { shell: true } : {}
-    if (env.path) {
-      spawnParams.cwd = env.path
-    }
-    const process = spawn(scriptFile, params, spawnParams)
-    process.stdout.on('data', data => {
+    const child = spawnScript(scriptFile, params, env.path)
+    child.stdout.on('data', data => {
       log(logFile, data)
     })
-    process.stderr.on('data', data => {
+    child.stderr.on('data', data => {
       log(logFile, `== Stderr == \r\n${data}`)
     })
-    process.on('close', code => {
+    child.on('close', code => {
       log(logFile, `The ${env.name} environment ${name} process ${code === 0 ? 'succeded' : 'failed'}`)
       if (code === 0) {
         if (next && next.length > 0) {
@@ -65,7 +60,7 @@ const runScript = (step, {env, branch, logName, lock}, next) => {
         endScript(env, logName, lock, code)
       }
     })
-    process.on('error', err => {
+    child.on('error', err => {
       endScript(env, logName, lock, null, branch, err)
     })
   } else {
