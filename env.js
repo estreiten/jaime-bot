@@ -18,6 +18,22 @@ const getEnvByName = (name) => {
   return false
 }
 
+const endScript = (env, logName, lock, code, branch, error) => {
+  const logFile = `${logName}.log`
+  const endMsg = `===== The ${env.name} environment ${code === 0 ? 'has been updated' : 'update failed'} =====`
+  if (error) {
+    log(logFile, `error ${error.name}: ${error.message}`)
+  }
+  log(logFile, endMsg)
+  const newLog = `${logName}-${code === null ? 1 : code}.log`
+  fs.renameSync(logFile, newLog)
+  if (branch) {
+    console.log(`${branch} branch processing finished`)
+  }
+  fs.unlinkSync(lock)
+  notifierService.notifyEnv(code === 0 ? 'ok' : 'fail', env, branch, newLog)
+}
+
 const runScript = (step, {env, branch, logName, lock}, next) => {
   const name = step === 'post' ? 'post-build' : step
   const scriptFile = step === 'update' ? `${__dirname}/update.sh` : `${__dirname}/env/${env.name}/${step}.sh`
@@ -43,40 +59,18 @@ const runScript = (step, {env, branch, logName, lock}, next) => {
         if (next && next.length > 0) {
           runScript(next.shift(), {env, branch, logName, lock}, next)
         } else {
-          log(logFile, `===== The ${env.name} environment has been updated =====`)
-          const newLog = `${logName}-${code === null ? 1 : code}.log`
-          fs.renameSync(logFile, newLog)
-          if (branch) {
-            console.log(`${branch} branch processing finished`)
-          }
-          fs.unlinkSync(lock)
-          notifierService.notifyEnv('ok', env, branch, newLog)
+          endScript(env, logName, lock, code, branch)
         }
       } else {
-        log(logFile, `===== The ${env.name} environment update failed =====`)
-        const newLog = `${logName}-${code === null ? 1 : code}.log`
-        fs.renameSync(logFile, newLog)
-        fs.unlinkSync(lock)
-        notifierService.notifyEnv('fail', env, branch, newLog)
+        endScript(env, logName, lock, code)
       }
     })
     process.on('error', err => {
-      log(logFile, `error ${err.name}: ${err.message}`)
-      const newLog = `${logName}-1.log`
-      fs.renameSync(logFile, newLog)
-      fs.unlinkSync(lock)
-      notifierService.notifyEnv('fail', env, branch, newLog)
+      endScript(env, logName, lock, null, branch, err)
     })
   } else {
     log(logFile, `No ${env.name} environment ${name} script was found`)
-    log(logFile, `===== The ${env.name} environment has been updated =====`)
-    const newLog = `${logName}-0.log`
-    fs.renameSync(logFile, newLog)
-    if (branch) {
-      console.log(`${branch} branch processing finished`)
-    }
-    fs.unlinkSync(lock)
-    notifierService.notifyEnv('ok', env, branch, newLog)
+    endScript(env, logName, lock, 0, branch)
   }
 }
 
