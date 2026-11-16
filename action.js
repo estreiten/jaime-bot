@@ -1,5 +1,4 @@
 const fs = require('fs');
-const os = require('os');
 const { spawnScript, killScript } = require('./runner');
 const actions = require('./config').actions;
 const notifierService = require('./notifier');
@@ -20,6 +19,7 @@ const afterScript = (code, logFile, logName, action, path, lock) => {
   fs.renameSync(logFile, newLog)
   if (code === 10) {
     runScript(action, path)
+    return
   } else {
     fs.unlinkSync(lock)
     notifierService.notifyAction(code === 0 ? 'ok' : code === 3 ? 'warn' : 'fail', action, newLog)
@@ -60,7 +60,7 @@ const runScript = async (action, path) => {
       }
     })
     child.on('close', code => {
-      afterScript(hasWarning ? 3 : code, logFile, logName, action, path, lock)
+      afterScript(code === 0 && hasWarning ? 3 : code, logFile, logName, action, path, lock)
     })
     child.on('error', err => {
       errorHandler(err, logFile, logName, lock, action)

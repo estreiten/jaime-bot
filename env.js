@@ -1,5 +1,4 @@
 const fs = require('fs');
-const os = require('os');
 const { spawnScript } = require('./runner');
 const util = require('./utils.js');
 const notifierService = require('./notifier');
@@ -41,6 +40,7 @@ const runScript = (step, {env, branch, logName, lock}, next) => {
   const params = branch ? [branch, logFile] : [logFile]
   if (fs.existsSync(scriptFile)) {
     log(logFile, `===== ${env.name} environment ${name} started =====`)
+    let spawnError = null
     const child = spawnScript(scriptFile, params, env.path)
     child.stdout.on('data', data => {
       log(logFile, data)
@@ -49,6 +49,9 @@ const runScript = (step, {env, branch, logName, lock}, next) => {
       log(logFile, `== Stderr == \r\n${data}`)
     })
     child.on('close', code => {
+      if (spawnError) {
+        return endScript(env, logName, lock, null, branch, spawnError)
+      }
       log(logFile, `The ${env.name} environment ${name} process ${code === 0 ? 'succeded' : 'failed'}`)
       if (code === 0) {
         if (next && next.length > 0) {
@@ -61,7 +64,7 @@ const runScript = (step, {env, branch, logName, lock}, next) => {
       }
     })
     child.on('error', err => {
-      endScript(env, logName, lock, null, branch, err)
+      spawnError = err
     })
   } else {
     log(logFile, `No ${env.name} environment ${name} script was found`)
