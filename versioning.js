@@ -6,12 +6,12 @@ const gitEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'nev
 const versionCompare = (v1, v2) => {
   const v1Arr = v1.split('.')
   const v2Arr = v2.split('.')
-  if (Number(v1Arr[0]) < Number(v2Arr[0])) return -1
-  else if (Number(v1Arr[0]) > Number(v2Arr[0])) return 1
-  else if (Number(v1Arr[1]) < Number(v2Arr[1])) return -1
-  else if (Number(v1Arr[1]) > Number(v2Arr[1])) return 1
-  else if (Number(v1Arr[2]) < Number(v2Arr[2])) return -1
-  else if (Number(v1Arr[2]) > Number(v2Arr[2])) return 1
+  if (Number(v1Arr[0] || 0) < Number(v2Arr[0] || 0)) return -1
+  else if (Number(v1Arr[0] || 0) > Number(v2Arr[0] || 0)) return 1
+  else if (Number(v1Arr[1] || 0) < Number(v2Arr[1] || 0)) return -1
+  else if (Number(v1Arr[1] || 0) > Number(v2Arr[1] || 0)) return 1
+  else if (Number(v1Arr[2] || 0) < Number(v2Arr[2] || 0)) return -1
+  else if (Number(v1Arr[2] || 0) > Number(v2Arr[2] || 0)) return 1
   else return 0
 }
 
