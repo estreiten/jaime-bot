@@ -17,7 +17,7 @@ app.get('/', async (req, res) => {
   try {
     if (authorized(req)) {
       let info = {
-        env: envManager.getEnvironments(),
+        env: await envManager.getEnvironments(),
         actions: actionManager.getActions()
       }
       if (!!config.name) {
@@ -40,6 +40,8 @@ app.post('/update', async (req, res) => {
       if (!!req.body.env && Object.keys(config.env).indexOf(req.body.env) > -1) {
         if (!!req.body.branch) {
           envManager.updateByBranch(req.body.env, req.body.branch)
+        } else if (!!req.body.version) {
+          envManager.updateByVersion(req.body.env, req.body.version)
         } else {
           envManager.updateByEnvName(req.body.env)
         }

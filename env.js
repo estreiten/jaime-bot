@@ -2,7 +2,16 @@ const fs = require('fs');
 const { spawnScript } = require('./runner');
 const util = require('./utils.js');
 const notifierService = require('./notifier');
+const { getEnvReleases } = require('./versioning');
 const environments = require('./config').env;
+
+// Versioning without "properties" gets a single "current" combo, driven by the checked-out branch
+for (const envName in environments) {
+  const versioning = environments[envName].versioning
+  if (versioning && !(Array.isArray(versioning.properties) && versioning.properties.length > 0)) {
+    versioning.properties = ['current']
+  }
+}
 
 const getEnvByName = (name) => {
   for (const envName in environments) {
@@ -127,12 +136,29 @@ module.exports = {
     const env = getEnvByName(envName)
     update(env, branch)
   },
-  getEnvironments: () => {
+  // Version chosen in Jaime's combo: the first property's value becomes the "pre" + version branch
+  updateByVersion: (envName, version) => {
+    const env = getEnvByName(envName)
+    const firstVersion = env && env.versioning ? Object.values(version)[0] : null
+    update(env, firstVersion ? env.versioning.pre + firstVersion : undefined)
+  },
+  getEnvironments: async () => {
     let envs = []
     for (const envName in environments) {
       if (Object.hasOwnProperty.call(environments, envName)) {
         let env = environments[envName];
         env.name = envName
+        if (!!env.versioning) {
+          try {
+            env.releases = await getEnvReleases(env.path, env.versioning)
+            // The current version is the checked-out release branch (without the "pre" prefix)
+            env.versions = env.releases.current ? { [env.versioning.properties[0]]: env.releases.current } : {}
+          } catch (e) {
+            env.releases = { list: [], current: null }
+            env.versions = {}
+            console.error(e)
+          }
+        }
         env.logs = getEnvLogs(envName)
         envs.push(env)
       }
